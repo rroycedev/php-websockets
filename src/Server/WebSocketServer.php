@@ -44,16 +44,19 @@ class WebSocketServer
 				$ip = $socket->getPeerName($socket_new);
 
 				if ($rc->success) {
-					$response = $this->_mask(json_encode(array('type'=>'success', 'message'=>$ip.' connected'))); //prepare json data
+					echo "Success\n";
+                                        $this->_connections[$rc->user] = $socket_new;
+
+					$response = $this->_mask(json_encode(array('type'=>'success', 'name' => 'System', 'color' => "#0000ff", 'message'=> $rc->user . " is now connected" ))); //prepare json data
+
+	                                $this->_sendMessage($response); //notify all users about new connection
 				}	
 				else {
-                                        $response = $this->_mask(json_encode(array('type'=>'failure', 'message'=> $rc->msg))); //prepare json data
+                                        $response = $this->_mask(json_encode(array('type'=>'failure', 'name' => 'System', 'color' => "#ff0000", 'message'=> $rc->msg))); //prepare json data
+
+                                         $this->_sendPrivateMessage($outgoing_socket, $response);
                                	}
 
-				$this->_connections[$rc->user] = $socket_new;
-
-				$this->_sendMessage($response); //notify all users about new connection
-		
 				//make room for new socket
 				$found_socket = array_search($socket->socketHandle, $changed);
 				unset($changed[$found_socket]);
@@ -83,26 +86,28 @@ class WebSocketServer
 						}
 					}
 
-	
-					echo "Message:\n";
-					print_r($tst_msg);
+					switch ($tst_msg["msgtype"]) {
+					case 'chat':
+						$user_name = $tst_msg['name']; //sender name
 
-					$user_name = $tst_msg['name']; //sender name
+						if (array_key_exists($user_name, $this->_connections)) {
+							$outgoing_socket = $this->_connections[$user_name];
+							$user_message = $tst_msg['message']; //message text
+							$user_color = $tst_msg['color']; //color
+						}
+						else {
+							$outgoing_socket = $changed_socket;
+							$user_message = "User not logged in: (" . array_keys($this->_connections) . ")";
+							$user_color = "#ff0000";
+						}
 
-					if (array_key_exists($user_name, $this->_connections)) {
-						$outgoing_socket = $this->_connections[$user_name];
-						$user_message = $tst_msg['message']; //message text
-						$user_color = $tst_msg['color']; //color
+						//prepare data to be sent to client
+						$response_text = $this->_mask(json_encode(array('type'=>'usermsg', 'name'=>$fromUsername, 'message'=>$user_message, 'color'=>$user_color)));
+
+						$this->_sendPrivateMessage($outgoing_socket, $response_text); //send data
+						break;			
 					}
-					else {
-						$outgoing_socket = $changed_socket;
-						$user_message = "User not logged in";
-						$user_color = "#ff0000";
-					}
 
-					//prepare data to be sent to client
-					$response_text = $this->_mask(json_encode(array('type'=>'usermsg', 'name'=>$fromUsername, 'message'=>$user_message, 'color'=>$user_color)));
-					$this->_sendPrivateMessage($outgoing_socket, $response_text); //send data
 					break 2; //exist this loop
 				}
 
@@ -130,11 +135,13 @@ class WebSocketServer
 		return true;
 	}
 
-	private function _sendMessage($msg)
+	private function _sendMessage($msg, $excludeSocket = null)
 	{
-		foreach($this->_clients as $changed_socket)
-		{
-			@socket_write($changed_socket,$msg,strlen($msg));
+		foreach($this->_connections as $username => $s) {
+			if (!$excludeSocket || ($excludeSocket && $s != $excludeSocket)) {
+				echo "Sending to user $username\n";
+				@socket_write($s,$msg,strlen($msg));
+			}
 		}
 		return true;
 	}
@@ -185,9 +192,6 @@ class WebSocketServer
 		foreach($lines as $line)
 		{
 			$line = chop($line);
-
-
-			echo "Line: [$line]\n";
 
 			if (substr($line, 0, 4) == "GET ") 
 			{
@@ -247,6 +251,3 @@ class WebSocketServer
 		return (object)array("success" => !$error, "msg" => $msg, "user" => $username);
 	}
 }
-
-
-
