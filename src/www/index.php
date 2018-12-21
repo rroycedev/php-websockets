@@ -50,7 +50,8 @@ button#send-message, button#connect {
 <body>
 
 <div class="chat-wrapper">
-<input type="text" name="fromname" id="fromname" placeholder="Username" maxlength="30" />&nbsp;<button id="connect" name="connect">Connect</button>
+<input type="text" name="fromname" id="fromname" placeholder="Username" maxlength="30" style="margin-left: 10px;" />
+<button id="connect" name="connect">Connect</button>
 <div id="message-box" style="margin-top: 10px;"></div>
 <div class="user-panel">
 <input type="text" name="toname" id="toname" placeholder="Destination Username" maxlength="30" disabled />
@@ -96,7 +97,8 @@ button#send-message, button#connect {
 	                var user_color          = response.color; //color
         	        switch(res_type){
                 	        case 'usermsg':
-	                                msgBox.append('<div><span class="user_name" style="color:' + user_color + '">' + user_name + '</span> : <span class="user_message">' + user_message + '</span></div>');
+	                                msgBox.append('<div><span class="user_name" style="color:' + user_color + '">' + user_name + '</span> : <span class="user_message">' + 
+							user_message + '</span></div>');
         	                        break;
                 	        case 'success':
 		                        msgBox.append('<div class="system_msg" style="color:#bbbbbb">Welcome to my "Demo WebSocket Chat box"!</div>'); //notify user
