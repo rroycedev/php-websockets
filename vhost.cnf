@@ -2,9 +2,9 @@
                 ServerAdmin webmaster@localhost
 
                 ServerName d0dbadmind01
-                DocumentRoot /home/rroyce/websocket
+                DocumentRoot /home/rroyce/websocket/src/www
 
-                <Directory /home/rroyce/websocket>
+                <Directory /home/rroyce/websocket/src/www>
                         Options Indexes FollowSymLinks
                         AllowOverride All
                         Require all granted
