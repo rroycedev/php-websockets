@@ -50,7 +50,7 @@ button#send-message, button#connect {
 <body>
 
 <div class="chat-wrapper">
-<input type="text" name="fromname" id="fromname" placeholder="Username" maxlength="30" style="margin-left: 10px;" />
+<input type="text" name="fromname" id="fromname" placeholder="Username" maxlength="30" />
 <button id="connect" name="connect">Connect</button>
 <div id="message-box" style="margin-top: 10px;"></div>
 <div class="user-panel">
@@ -101,8 +101,8 @@ button#send-message, button#connect {
 							user_message + '</span></div>');
         	                        break;
                 	        case 'success':
-		                        msgBox.append('<div class="system_msg" style="color:#bbbbbb">Welcome to my "Demo WebSocket Chat box"!</div>'); //notify user
-	                                msgBox.append('<div style="color:#bbbbbb">' + user_message + '</div>');
+                                        msgBox.append('<div><span class="user_name" style="color:' + user_color + '">' + user_name + '</span> : <span class="user_message">' +
+                                                        user_message + '</span></div>');
 					$('#connect').text('Disconnect');
 					connected = true;
 					$('#fromname').prop('disabled', true);
@@ -146,9 +146,10 @@ button#send-message, button#connect {
 		}
 		//prepare json data
 		var msg = {
+			msgtype: 'chat',
 			message: message_input.val(),
 			name: name_input.val(),
-			color : '<?php echo $colors[$color_pick]; ?>'
+			color : '<?php echo '#00ff00'; ?>'
 		};
 		//convert and send data to server
 		websocket.send(JSON.stringify(msg));	
