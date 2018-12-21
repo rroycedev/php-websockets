@@ -1,0 +1,22 @@
+        <VirtualHost 10.218.155.47:8000>
+                ServerAdmin webmaster@localhost
+
+                ServerName d0dbadmind01
+                DocumentRoot /home/rroyce/websocket
+
+                <Directory /home/rroyce/websocket>
+                        Options Indexes FollowSymLinks
+                        AllowOverride All
+                        Require all granted
+                        SetEnv nokeepalive ssl-unclean-shutdown
+                </Directory>
+
+                ProxyRequests On
+                ProxyPass /ws/ ws://10.218.155.47:9000/ connectiontimeout=30 timeout=6000
+                ProxyPassReverse /ws/ ws://10.218.155.47:9000/
+                ProxyTimeout 6666
+
+                ErrorLog ${APACHE_LOG_DIR}/websocket-error.log
+                CustomLog ${APACHE_LOG_DIR}/websocket-access.log combined
+        </VirtualHost>
+
