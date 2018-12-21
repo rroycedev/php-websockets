@@ -6,6 +6,7 @@ class WebSocketServer
 	private $_host = "";
 	private $_port = "";
 	private $_clients = null;
+	private $_connetions = array();
 
 	public function __construct($host, $port) 
 	{
@@ -38,11 +39,19 @@ class WebSocketServer
 				$this->_clients[] = $socket_new; 
 		
 				$header = $socket->read($socket_new, 1024);
-				$this->_performHandshaking($header, $socket_new); 
-		
+				$rc = $this->_performHandshaking($header, $socket_new); 
+
 				$ip = $socket->getPeerName($socket_new);
 
-				$response = $this->_mask(json_encode(array('type'=>'system', 'message'=>$ip.' connected'))); //prepare json data
+				if ($rc->success) {
+					$response = $this->_mask(json_encode(array('type'=>'success', 'message'=>$ip.' connected'))); //prepare json data
+				}	
+				else {
+                                        $response = $this->_mask(json_encode(array('type'=>'failure', 'message'=> $rc->msg))); //prepare json data
+                               	}
+
+				$this->_connections[$rc->user] = $socket_new;
+
 				$this->_sendMessage($response); //notify all users about new connection
 		
 				//make room for new socket
@@ -65,16 +74,35 @@ class WebSocketServer
 					$received_text = $this->_unmask($buf); //unmask data
 					$tst_msg = json_decode($received_text, true); //json decode 
 
+
+					$fromUsername = "Unknown";
+
+					foreach ($this->_connections as $username => $s) {
+						if ($s == $changed_socket) {
+							$fromUsername = $username;
+						}
+					}
+
+	
 					echo "Message:\n";
 					print_r($tst_msg);
 
 					$user_name = $tst_msg['name']; //sender name
-					$user_message = $tst_msg['message']; //message text
-					$user_color = $tst_msg['color']; //color
-				
+
+					if (array_key_exists($user_name, $this->_connections)) {
+						$outgoing_socket = $this->_connections[$user_name];
+						$user_message = $tst_msg['message']; //message text
+						$user_color = $tst_msg['color']; //color
+					}
+					else {
+						$outgoing_socket = $changed_socket;
+						$user_message = "User not logged in";
+						$user_color = "#ff0000";
+					}
+
 					//prepare data to be sent to client
-					$response_text = $this->_mask(json_encode(array('type'=>'usermsg', 'name'=>$user_name, 'message'=>"Received: " . $user_message, 'color'=>$user_color)));
-					$this->_sendMessage($response_text); //send data
+					$response_text = $this->_mask(json_encode(array('type'=>'usermsg', 'name'=>$fromUsername, 'message'=>$user_message, 'color'=>$user_color)));
+					$this->_sendPrivateMessage($outgoing_socket, $response_text); //send data
 					break 2; //exist this loop
 				}
 
@@ -93,6 +121,13 @@ class WebSocketServer
 		}
 		
 		$socket->close();	
+	}
+
+	private function _sendPrivateMessage($s, $msg)
+	{
+		@socket_write($s, $msg, strlen($msg));
+
+		return true;
 	}
 
 	private function _sendMessage($msg)
@@ -142,27 +177,74 @@ class WebSocketServer
 	private function _performHandshaking($receved_header,$client_conn)
 	{
 		$headers = array();
-		$lines = preg_split("/\r\n/", $receved_header);
+		$lines = preg_split("/\r\n/", $receved_header);	
+		$error = false;	
+		$msg = "";
+		$username = "";
+
 		foreach($lines as $line)
 		{
 			$line = chop($line);
+
+
+			echo "Line: [$line]\n";
+
+			if (substr($line, 0, 4) == "GET ") 
+			{
+				$url = substr($line, 4);
+
+
+				$pos = stripos($url, " ");
+
+				$url = substr($url, 0, $pos);
+
+				$pos = stripos($url, "?");
+			
+				if ($pos !== FALSE) {
+					$args = explode("&", substr($url, $pos + 1));
+
+					foreach ($args as $arg) {
+						$parts = explode("=", $arg);
+
+						$key = $parts[0];
+						$val = $parts[1];
+
+						if ($key == "user") 
+						{
+							$username = $val;
+						}
+					}
+				}
+			}
+
 			if(preg_match('/\A(\S+): (.*)\z/', $line, $matches))
 			{
 				$headers[$matches[1]] = $matches[2];
 			}
 		}
 
+		if ($username == "") {
+			$error = true;
+			$msg = "No username specified";
+		}
+
 		$secKey = $headers['Sec-WebSocket-Key'];
 		$secAccept = base64_encode(pack('H*', sha1($secKey . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')));
+
+		$secResult = ($error ? "SUCCESS" : "FAILURE");
+
 		//hand shaking header
 		$upgrade  = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
 		"Upgrade: websocket\r\n" .
 		"Connection: Upgrade\r\n" .
 		"WebSocket-Origin: $this->_host\r\n" .
 		"WebSocket-Location: ws://$this->_host:$this->_port/server.php\r\n".
-		"Sec-WebSocket-Accept:$secAccept\r\n\r\n";
+		"Sec-WebSocket-Accept:$secAccept\r\n" .
+		"WebSocket-Result: $secResult\r\n\r\n";
 
 		socket_write($client_conn,$upgrade,strlen($upgrade));
+
+		return (object)array("success" => !$error, "msg" => $msg, "user" => $username);
 	}
 }
 

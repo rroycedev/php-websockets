@@ -14,7 +14,6 @@ $color_pick = array_rand($colors);
     padding: 20px;
     margin: 20px auto;
     box-shadow: 2px 2px 2px 0px #00000017;
-	max-width:700px;
 	min-width:500px;
 }
 #message-box {
@@ -40,7 +39,7 @@ input[type=text]#name{
 input[type=text]#message{
     width:60%;
 }
-button#send-message {
+button#send-message, button#connect {
     border: none;
     padding: 5px 15px;
     background: #11e0fb;
@@ -51,55 +50,76 @@ button#send-message {
 <body>
 
 <div class="chat-wrapper">
-<div id="message-box"></div>
+<input type="text" name="fromname" id="fromname" placeholder="Username" maxlength="30" />&nbsp;<button id="connect" name="connect">Connect</button>
+<div id="message-box" style="margin-top: 10px;"></div>
 <div class="user-panel">
-<input type="text" name="name" id="name" placeholder="Your Name" maxlength="15" />
-<input type="text" name="message" id="message" placeholder="Type your message here..." maxlength="100" />
-<button id="send-message">Send</button>
+<input type="text" name="toname" id="toname" placeholder="Destination Username" maxlength="30" disabled />
+<input type="text" name="message" id="message" placeholder="Type your message here..." disabled maxlength="100" />
+<button id="send-message" name="send-message" disabled>Send</button>
 </div>
 </div>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script language="javascript" type="text/javascript">  
-	//create a new WebSocket object.
-	var msgBox = $('#message-box');
-	var wsUri = "ws://10.218.155.47:9000/server.php"; 	
+	var connected = false;
 
-	var authToken = 'R3YKZFKBVi';
-
-	document.cookie = 'X-Authorization=' + authToken + '; path=/';
-
-	websocket = new WebSocket(wsUri); 
-	
-	websocket.onopen = function(ev) { // connection is open 
-		msgBox.append('<div class="system_msg" style="color:#bbbbbb">Welcome to my "Demo WebSocket Chat box"!</div>'); //notify user
-	}
-	// Message received from server
-	websocket.onmessage = function(ev) {
-		var response 		= JSON.parse(ev.data); //PHP sends Json data
-		
-		var res_type 		= response.type; //message type
-		var user_message 	= response.message; //message text
-		var user_name 		= response.name; //user name
-		var user_color 		= response.color; //color
-		switch(res_type){
-			case 'usermsg':
-				msgBox.append('<div><span class="user_name" style="color:' + user_color + '">' + user_name + '</span> : <span class="user_message">' + user_message + '</span></div>');
-				break;
-			case 'system':
-				msgBox.append('<div style="color:#bbbbbb">' + user_message + '</div>');
-				break;
-		}
-		msgBox[0].scrollTop = msgBox[0].scrollHeight; //scroll message 
-	};
-	
-	websocket.onerror	= function(ev){ 
-		msgBox.append('<div class="system_error">Error Occurred - ' + ev.data + '</div>'); 
-	}; 
-	websocket.onclose 	= function(ev){ msgBox.append('<div class="system_msg">Connection Closed</div>'); }; 
-	//Message send button
 	$('#send-message').click(function(){
 		send_message();
+	});
+
+	$('#connect').click(function() {
+                var name_input = $('#fromname'); //user name
+
+                if(name_input.val() == ""){ //empty name?
+                        alert("Enter your Name please!");
+                        return;
+                }
+
+	        var msgBox = $('#message-box');
+        	var wsUri = "ws://10.218.155.47:9000/server.php?user=" + name_input.val();
+
+	        var authToken = 'R3YKZFKBVi';
+
+        	document.cookie = 'X-Authorization=' + authToken + '; path=/';
+
+	        websocket = new WebSocket(wsUri);
+
+	        websocket.onopen = function(ev) { // connection is open
+	        }
+        	// Message received from server
+	        websocket.onmessage = function(ev) {
+        	        var response            = JSON.parse(ev.data); //PHP sends Json data
+
+	                var res_type            = response.type; //message type
+        	        var user_message        = response.message; //message text
+                	var user_name           = response.name; //user name
+	                var user_color          = response.color; //color
+        	        switch(res_type){
+                	        case 'usermsg':
+	                                msgBox.append('<div><span class="user_name" style="color:' + user_color + '">' + user_name + '</span> : <span class="user_message">' + user_message + '</span></div>');
+        	                        break;
+                	        case 'success':
+		                        msgBox.append('<div class="system_msg" style="color:#bbbbbb">Welcome to my "Demo WebSocket Chat box"!</div>'); //notify user
+	                                msgBox.append('<div style="color:#bbbbbb">' + user_message + '</div>');
+					$('#connect').text('Disconnect');
+					connected = true;
+					$('#fromname').prop('disabled', true);
+					$('#toname').prop('disabled', false);
+					$('#message').prop('disabled', false);
+					$('#send-message').prop('disabled', false);
+        	                        break;
+                	        case 'failure':
+                        	        msgBox.append('<div style="color:#ff0000">ERROR: ' + user_message + '</div>');
+	                                break;
+        	        }
+	                msgBox[0].scrollTop = msgBox[0].scrollHeight; //scroll message
+        	};
+
+	        websocket.onerror       = function(ev){
+        	        msgBox.append('<div class="system_error">Error Occurred - ' + ev.data + '</div>');
+	        };
+        	websocket.onclose       = function(ev){ msgBox.append('<div class="system_msg">Connection Closed</div>'); };
+
 	});
 	
 	//User hits enter key 
@@ -112,7 +132,7 @@ button#send-message {
 	//Send message
 	function send_message(){
 		var message_input = $('#message'); //user message text
-		var name_input = $('#name'); //user name
+		var name_input = $('#toname'); //user name
 		
 		if(message_input.val() == ""){ //empty name?
 			alert("Enter your Name please!");
