@@ -1,0 +1,11 @@
+{
+    "packages": {
+        "rroycedev/php-websockets": {
+            "dev-master": { @composer.json },
+            "1.0.x-dev": { @composer.json },
+            "0.0.1": { @composer.json },
+            "1.0.0": { @composer.json }
+        }
+    }
+}
+

@@ -1,0 +1,13 @@
+{
+     "name": "rroycedev/php-websockets",
+     "description": "Websockets for PHP",
+     "keywords": ["framework", "PHP", "Websockets"],
+     "license": "MIT",
+     "type": "project",
+     "require": {
+          "php": "^7.1.3"
+     },
+     "require-dev": {
+          "phpunit/phpunit": "^7.0"
+     }
+}
